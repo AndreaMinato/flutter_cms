@@ -67,10 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
       builder: (context, httpClient) {
         WindowToFront.activate();
         return Scaffold(
-          appBar: AppBar(
-            title: const Text("YOLO"),
-            elevation: 2,
-          ),
+
           body: GitHubSummary(
             gitHub: _getGitHub(httpClient.credentials.accessToken),
           ),

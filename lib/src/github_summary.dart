@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_cms/src/repo_detail.dart';
 import 'package:github/github.dart';
 import 'package:markdown_editor_plus/widgets/markdown_auto_preview.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 
 class GitHubSummary extends StatefulWidget {
   const GitHubSummary({required this.gitHub, super.key});
@@ -35,6 +35,8 @@ class _RepositoriesListState extends State<RepositoriesList> {
     _repositories = widget.gitHub.repositories.listRepositories().toList();
   }
 
+  int _selectedIndex = 0;
+
   late Future<List<Repository>> _repositories;
 
   @override
@@ -48,19 +50,46 @@ class _RepositoriesListState extends State<RepositoriesList> {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        var repositories = snapshot.data;
-        return ListView.builder(
-          primary: false,
-          itemBuilder: (context, index) {
-            var repository = repositories[index];
-            return ListTile(
-              title:
-                  Text('${repository.owner?.login ?? ''}/${repository.name}'),
-              subtitle: Text(repository.description),
-              onTap: () => showContent(this, repository),
-            );
-          },
-          itemCount: repositories!.length,
+        var repositories = snapshot.data ?? [];
+        return Row(
+          children: [
+            LayoutBuilder(builder: (context, constraint) {
+              return SingleChildScrollView(
+                  child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraint.maxHeight),
+                      child: IntrinsicHeight(
+                          child: NavigationRail(
+                        selectedIndex: _selectedIndex,
+                        onDestinationSelected: (index) {
+                          setState(() {
+                            _selectedIndex = index;
+                          });
+                        },
+                        labelType: NavigationRailLabelType.all,
+                        destinations: repositories.map((Repository repo) {
+                          return NavigationRailDestination(
+                            icon: const Icon(Icons.pageview),
+                            label: Text(repo.name),
+                          );
+                        }).toList(),
+                      ))));
+            }),
+
+            const VerticalDivider(thickness: 1, width: 1),
+            // This is the main content.
+            Expanded(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: repositories.map((Repository repo) {
+                  return RepoDetail(
+                    gitHub: widget.gitHub,
+                    repository: repo,
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -104,7 +133,6 @@ description: 'meta description of the page'
                 ),
                 FilledButton(
                     onPressed: () async {
-                      print("starting");
                       try {
                         var creation = await state.widget.gitHub.repositories
                             .createFile(
@@ -117,15 +145,16 @@ description: 'meta description of the page'
                                             "AndreaMinatoDefault",
                                         "andreamianto@outlook.com"),
                                     message: "Uploaded new file from flutter",
-                                    content:
-                                        base64.encode(utf8.encode(controller.text))));
+                                    content: base64
+                                        .encode(utf8.encode(controller.text))));
 
-                        print("done cretaing");
-                        print(creation.toJson());
                         if (!context.mounted) return;
                         Navigator.of(context).pop();
                       } catch (er) {
-                        print("uhoh");
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(
+                          content: Text("Something gone wrong"),
+                        ));
                       }
                     },
                     child: const Text("Write content"))
@@ -144,28 +173,4 @@ description: 'meta description of the page'
       ],
     ),
   );
-}
-
-Future<void> _launchUrl(State state, String url) async {
-  if (await canLaunchUrlString(url)) {
-    await launchUrlString(url);
-  } else {
-    if (state.mounted) {
-      return showDialog(
-        context: state.context,
-        builder: (context) => AlertDialog(
-          title: const Text('Navigation error'),
-          content: Text('Could not launch $url'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
 }

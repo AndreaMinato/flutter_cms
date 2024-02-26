@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cms/src/models/cms_config.dart';
 import 'package:flutter_cms/src/repo_files.dart';
 import 'package:github/github.dart';
-import 'package:markdown_editor_plus/widgets/markdown_auto_preview.dart';
 
 class RepoDetail extends StatefulWidget {
   const RepoDetail({required this.gitHub, required this.repository, super.key});
@@ -54,7 +53,7 @@ class _RepoDetailState extends State<RepoDetail> {
                       .map((e) => RepoFiles(
                             gitHub: widget.gitHub,
                             repository: widget.repository,
-                            path: e.path,
+                            config: e,
                           ))
                       .toList(),
                 ),

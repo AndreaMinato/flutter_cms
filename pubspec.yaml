@@ -40,7 +40,10 @@ dependencies:
   url_launcher: ^6.2.4
   github: ^9.22.0
   window_to_front: ^0.0.3
-  markdown_editor_plus: ^0.2.13
+  markdown_toolbar: ^0.5.0
+  cosmic_frontmatter: ^1.0.3
+  flutter_form_builder: ^9.2.1
+  slugify: ^2.0.0
 
 dev_dependencies:
   flutter_test:

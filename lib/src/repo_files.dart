@@ -1,17 +1,18 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_cms/src/github_file.dart';
+import 'package:flutter_cms/src/models/cms_config.dart';
 import 'package:github/github.dart';
-import 'package:markdown_editor_plus/widgets/markdown_auto_preview.dart';
 
 class RepoFiles extends StatefulWidget {
   const RepoFiles(
       {required this.gitHub,
       required this.repository,
-      required this.path,
+      required this.config,
       super.key});
   final GitHub gitHub;
-  final String path;
+  final CMSContent config;
   final Repository repository;
 
   @override
@@ -23,10 +24,16 @@ class _RepoFilesState extends State<RepoFiles> {
   Widget build(BuildContext context) {
     return FutureBuilder(
         future: widget.gitHub.repositories
-            .getContents(widget.repository.slug(), widget.path),
+            .getContents(widget.repository.slug(), widget.config.path),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('${snapshot.error}'));
+            // return Center(child: Text('${snapshot.error}'));
+            return ListView(children: [
+              ListTile(
+                title: const Text("New file"),
+                onTap: () => newFile(this),
+              )
+            ]);
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -35,14 +42,19 @@ class _RepoFilesState extends State<RepoFiles> {
           if (snapshot.data?.isDirectory ?? false) {
             var tree = snapshot.data?.tree ?? [];
 
-            return ListView(
-              children: tree
-                  .map((e) => ListTile(
-                        title: Text(e.name ?? "File"),
-                        onTap: () => showContent(this, e),
-                      ))
-                  .toList(),
-            );
+            return ListView(children: [
+              ListTile(
+                title: const Text("New file"),
+                onTap: () => newFile(this),
+              ),
+              ...tree.map((e) => ListTile(
+                  title: Text(e.name ?? "File"),
+                  onTap: () => showContent(this, e),
+                  onLongPress: () async {
+                    await deleteFile(this, e);
+                    setState(() {});
+                  })),
+            ]);
           }
 
           return const Center(child: Text('BOH'));
@@ -68,39 +80,74 @@ Future<void> showContent(State<RepoFiles> state, GitHubFile file) async {
 
             if (snapshot.data?.isFile ?? false) {
               String text = snapshot.data?.file?.text ?? "";
-              TextEditingController controller = TextEditingController();
-              controller.text = text;
 
-              return Column(children: [
-                MarkdownAutoPreview(
-                  controller: controller,
-                  emojiConvert: true,
-                ),
-                FilledButton(
-                    onPressed: () async {
-                      try {
-                        await state.widget.gitHub.repositories
-                            .updateFile(
-                                state.widget.repository.slug(),
-                                file.path ?? "",
-                                "Edit ${file.name}",
-                                base64.encode(utf8.encode(controller.text)),
-                                "sha");
-
-                        if (!context.mounted) return;
-                        Navigator.of(context).pop();
-                      } catch (er) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(
-                          content: Text("Something gone wrong"),
-                        ));
-                      }
-                    },
-                    child: const Text("Write content"))
-              ]);
+              return GithubFileEditor(
+                  gitHub: state.widget.gitHub,
+                  repository: state.widget.repository,
+                  file: file,
+                  config: state.widget.config,
+                  path: file.path ?? "",
+                  text: text);
             }
             return const Center(child: Text("Not a file"));
           }),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> deleteFile(State<RepoFiles> state, GitHubFile file) async {
+  return showDialog(
+      context: state.context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Please Confirm'),
+          content: Text('Are you sure to delete the ${file.name}?'),
+          actions: [
+            // The "Yes" button
+            TextButton(
+                onPressed: () {
+                  // Remove the box
+                  state.widget.gitHub.repositories.deleteFile(
+                      state.widget.repository.slug(),
+                      file.path ?? "",
+                      "Delete ${file.path} from CMS",
+                      file.sha ?? "",
+                      "master");
+
+                  // Close the dialog
+                  Navigator.of(state.context).pop();
+                },
+                child: const Text('Yes')),
+            TextButton(
+                onPressed: () {
+                  // Close the dialog
+                  Navigator.of(state.context).pop();
+                },
+                child: const Text('No'))
+          ],
+        );
+      });
+}
+
+Future<void> newFile(State<RepoFiles> state) async {
+  return showDialog(
+    context: state.context,
+    builder: (context) => AlertDialog(
+      title: const Text("New file"),
+      content: GithubFileEditor(
+          gitHub: state.widget.gitHub,
+          repository: state.widget.repository,
+          config: state.widget.config,
+          path: state.widget.config.path,
+          text: ""),
       actions: <Widget>[
         TextButton(
           onPressed: () {

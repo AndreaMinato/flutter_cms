@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_cms/src/github_file.dart';
 import 'package:flutter_cms/src/models/cms_config.dart';

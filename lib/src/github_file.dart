@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_cms/src/dynamic_field.dart';
 import 'package:flutter_cms/src/meta_editor.dart';
 import 'package:flutter_cms/src/models/cms_config.dart';
 import 'package:github/github.dart';

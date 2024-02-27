@@ -65,51 +65,74 @@ class _GithubFileEditorState extends State<GithubFileEditor> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      MetaEditor(
-        value: metas,
-        metas: widget.config.meta,
-        onChanged: (val) {
-          setState(() {
-            metas = val;
-          });
-        },
-      ),
-      const SizedBox(
-        height: 5,
-      ),
-      MarkdownToolbar(
-        useIncludedTextField:
-            false, // Because we want to use our own, set useIncludedTextField to false
-        controller: _controller, // Add the _controller
-        focusNode: _focusNode, // Add the _focusNode
-        collapsable: false,
-      ),
-      const SizedBox(
-        height: 5,
-      ),
-      Expanded(
-        flex: 1,
-        child: TextField(
-          minLines: 15,
-          maxLines: 50,
-          controller: _controller, // Add the _controller
-          focusNode: _focusNode, // Add the _focusNode
-        ),
-      ),
-      const SizedBox(
-        height: 5,
-      ),
-      FilledButton(
-          onPressed: () async {
-            if (widget.file == null) {
-              createFile();
-            } else {
-              updateFile();
-            }
-          },
-          child: const Text("Write content"))
-    ]);
+    return DefaultTabController(
+        initialIndex: 0,
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.save),
+                tooltip: 'Save',
+                onPressed: () {
+                  if (widget.file == null) {
+                    createFile();
+                  } else {
+                    updateFile();
+                  }
+                },
+              )
+            ],
+            title: Text(
+                "${widget.repository.name}/${widget.file?.name ?? 'New File'}"),
+            bottom: const TabBar(tabs: [
+              Tab(
+                text: "Meta",
+                icon: Icon(Icons.settings),
+              ),
+              Tab(
+                text: "Content",
+                icon: Icon(Icons.file_present),
+              )
+            ]),
+          ),
+          body: TabBarView(
+            children: [
+              MetaEditor(
+                value: metas,
+                metas: widget.config.meta,
+                onChanged: (val) {
+                  setState(() {
+                    metas = val;
+                  });
+                },
+              ),
+              Column(
+                children: [
+                  MarkdownToolbar(
+                    useIncludedTextField:
+                        false, // Because we want to use our own, set useIncludedTextField to false
+                    controller: _controller, // Add the _controller
+                    focusNode: _focusNode, // Add the _focusNode
+                    collapsable: false,
+                  ),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: TextField(
+                      minLines: 15,
+                      maxLines: 50,
+                      controller: _controller, // Add the _controller
+                      focusNode: _focusNode, // Add the _focusNode
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ));
   }
 
   void updateFile() async {
@@ -117,7 +140,7 @@ class _GithubFileEditorState extends State<GithubFileEditor> {
       await widget.gitHub.repositories.updateFile(
           widget.repository.slug(),
           widget.path,
-          "Edit file from CMS",
+          "Edit ${widget.file!.name} from CMS",
           getFileContent(),
           widget.file!.sha ?? "",
           branch: "master");
@@ -137,7 +160,7 @@ class _GithubFileEditorState extends State<GithubFileEditor> {
           CreateFile(
               branch: "master",
               content: getFileContent(),
-              message: "Create file from CMS",
+              message: "Create ${widget.path}/$fileName.md from CMS",
               path: "${widget.path}/$fileName.md",
               committer: CommitUser("FlutterCMS", "flutter@example.com")));
     } catch (er) {

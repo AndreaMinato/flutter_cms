@@ -30,9 +30,11 @@ class _RepoFilesState extends State<RepoFiles> {
             // return Center(child: Text('${snapshot.error}'));
             return ListView(children: [
               ListTile(
-                title: const Text("New file"),
-                onTap: () => newFile(this),
-              )
+                  title: const Text("New file"),
+                  onTap: () async {
+                    await newFile(this);
+                    setState(() {});
+                  })
             ]);
           }
           if (!snapshot.hasData) {
@@ -44,12 +46,23 @@ class _RepoFilesState extends State<RepoFiles> {
 
             return ListView(children: [
               ListTile(
-                title: const Text("New file"),
-                onTap: () => newFile(this),
+                title: const Text("Refresh"),
+                onTap: () => setState(() {}),
               ),
+              ListTile(
+                  title: const Text("New file"),
+                  onTap: () async {
+                    await newFile(this);
+                    setState(() {});
+                  }),
               ...tree.map((e) => ListTile(
                   title: Text(e.name ?? "File"),
-                  onTap: () => showContent(this, e),
+                  onTap: () async {
+                    bool result = await showContent(this, e);
+                    if (result) {
+                      setState(() {});
+                    }
+                  },
                   onLongPress: () async {
                     await deleteFile(this, e);
                     setState(() {});
@@ -62,48 +75,33 @@ class _RepoFilesState extends State<RepoFiles> {
   }
 }
 
-Future<void> showContent(State<RepoFiles> state, GitHubFile file) async {
-  return showDialog(
-    context: state.context,
-    builder: (context) => AlertDialog(
-      title: Text(file.name ?? ""),
-      content: FutureBuilder(
-          future: state.widget.gitHub.repositories
-              .getContents(state.widget.repository.slug(), file.path ?? ""),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(child: Text('${snapshot.error}'));
-            }
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
+Future<bool> showContent(State<RepoFiles> state, GitHubFile file) async {
+  try {
+    var fileContent = await state.widget.gitHub.repositories
+        .getContents(state.widget.repository.slug(), file.path ?? "");
 
-            if (snapshot.data?.isFile ?? false) {
-              String text = snapshot.data?.file?.text ?? "";
+    if (fileContent.isFile) {
+      String text = fileContent.file?.text ?? "";
+      await Navigator.of(state.context).push(PageRouteBuilder(
+          pageBuilder: (BuildContext context, _, __) => GithubFileEditor(
+              gitHub: state.widget.gitHub,
+              repository: state.widget.repository,
+              file: file,
+              config: state.widget.config,
+              path: file.path ?? "",
+              text: text)));
 
-              return GithubFileEditor(
-                  gitHub: state.widget.gitHub,
-                  repository: state.widget.repository,
-                  file: file,
-                  config: state.widget.config,
-                  path: file.path ?? "",
-                  text: text);
-            }
-            return const Center(child: Text("Not a file"));
-          }),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text('Close'),
-        ),
-      ],
-    ),
-  );
+      return true;
+    }
+  } catch (er) {
+    ScaffoldMessenger.of(state.context).showSnackBar(const SnackBar(
+      content: Text("Something gone wrong"),
+    ));
+  }
+  return false;
 }
 
-Future<void> deleteFile(State<RepoFiles> state, GitHubFile file) async {
+Future<dynamic> deleteFile(State<RepoFiles> state, GitHubFile file) async {
   return showDialog(
       context: state.context,
       builder: (BuildContext ctx) {
@@ -137,25 +135,12 @@ Future<void> deleteFile(State<RepoFiles> state, GitHubFile file) async {
       });
 }
 
-Future<void> newFile(State<RepoFiles> state) async {
-  return showDialog(
-    context: state.context,
-    builder: (context) => AlertDialog(
-      title: const Text("New file"),
-      content: GithubFileEditor(
+Future<dynamic> newFile(State<RepoFiles> state) async {
+  return Navigator.of(state.context).push(PageRouteBuilder(
+      pageBuilder: (BuildContext context, _, __) => GithubFileEditor(
           gitHub: state.widget.gitHub,
           repository: state.widget.repository,
           config: state.widget.config,
           path: state.widget.config.path,
-          text: ""),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text('Close'),
-        ),
-      ],
-    ),
-  );
+          text: "")));
 }

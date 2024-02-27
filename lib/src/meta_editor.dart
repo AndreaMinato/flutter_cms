@@ -36,14 +36,19 @@ class _MetaEditorState extends State<MetaEditor> {
             children: [
               ...widget.metas.map((meta) => switch (meta.type) {
                     "string" => FormBuilderTextField(
+                        initialValue: widget.value[meta.name] ?? "",
                         decoration: InputDecoration(labelText: meta.name),
                         name: meta.name,
                       ),
                     "date" => FormBuilderDateTimePicker(
+                        initialValue: widget.value[meta.name] != null
+                            ? DateTime.tryParse(widget.value[meta.name].toString())
+                            : DateTime.now(),
                         name: meta.name,
                         decoration: InputDecoration(labelText: meta.name),
                       ),
                     "bool" => FormBuilderCheckbox(
+                        initialValue: widget.value[meta.name] ?? false,
                         title: Text(meta.name),
                         name: meta.name,
                       ),
